@@ -6,21 +6,20 @@ import model.User;
 import org.apache.http.HttpStatus;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Slf4j
 public class LoginService {
 
-    public boolean attemptLogin(String username, String password) {
+    public Optional<User> attemptLogin(String username, String password) {
         User user = new User(username, password);
-        int responseCode;
         MillionaireApi api = MillionaireApi.getApi();
         try {
-            responseCode = api.sendLoginRequest(user);
+            return api.sendLoginRequest(user);
         } catch (IOException e) {
             log.error("Request fails", e);
-            return false;
+            return Optional.empty();
         }
-        return responseCode == HttpStatus.SC_OK;
     }
 
     public boolean attemptRegister(String username, String password, String nick) {

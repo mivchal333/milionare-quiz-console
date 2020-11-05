@@ -5,16 +5,27 @@ import com.googlecode.lanterna.gui2.dialogs.MessageDialogBuilder;
 import com.googlecode.lanterna.gui2.dialogs.MessageDialogButton;
 import com.googlecode.lanterna.screen.Screen;
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
+import model.Question;
+import model.User;
+import service.GameManager;
 import service.LoginService;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 
 public class App {
     private Window window;
     private WindowBasedTextGUI textGUI;
     private Screen screen;
-
+    private final List<Integer> prizes = Collections.unmodifiableList(Arrays.asList(500, 1_000, 2_000, 5_000, 10_000, 20_000, 40_000, 75_000, 125_000, 250_000, 500_000, 1_0000_000));
+    private final GameManager gameManager = new GameManager();
+    private List<Question> questions;
+    private int questionCount = 0;
     private final LoginService loginService = new LoginService();
+    private User user;
 
     void welcomeDialog() {
         new MessageDialogBuilder()
@@ -91,9 +102,11 @@ public class App {
         return () -> {
             String username = usernameLogin.getText();
             String password = passwordLogin.getText();
-            boolean result = loginService.attemptLogin(username, password);
-            if (result) {
-                textGUI.removeWindow(window);
+            Optional<User> userOpt = loginService.attemptLogin(username, password);
+            if (userOpt.isPresent()) {
+                user = userOpt.get();
+                showMainMenu();
+
             } else {
                 resultLabel.setText("Try again!");
                 resultLabel.setForegroundColor(TextColor.ANSI.RED);
@@ -108,15 +121,11 @@ public class App {
         try {
             setUpWindow();
 
-//            welcomeDialog();
+            welcomeDialog();
 
             authView();
 
-            System.out.println("END");
-
             textGUI.addWindowAndWait(window);
-
-
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -130,10 +139,111 @@ public class App {
         }
     }
 
-    public static void main(String[] args) {
+    private void showMainMenu() {
+        window.setHints(Arrays.asList(Window.Hint.CENTERED));
 
+        Panel panel = new Panel();
+        panel.setLayoutManager(new LinearLayout(Direction.HORIZONTAL));
+
+        Button playButton = new Button("PLAY");
+        playButton.addListener(button -> {
+            playGame();
+        });
+        panel.addComponent(playButton);
+
+        Button statisticsButton = new Button("STATISTICS");
+        statisticsButton.addListener(button -> {
+            showStatistics();
+        });
+        panel.addComponent(statisticsButton);
+
+        Button exitButton = new Button("CLOSE");
+        exitButton.addListener(button -> {
+            textGUI.removeWindow(window);
+        });
+        panel.addComponent(exitButton);
+
+        window.setComponent(panel);
+    }
+
+    private void playGame() {
+        questions = gameManager.getQuestions();
+
+        Panel panel = new Panel();
+
+
+        panel.addComponent(new EmptySpace(new TerminalSize(0, 2)));
+
+        Label questionTitle = new Label("Question number " + (questionCount + 1));
+        panel.addComponent(questionTitle);
+
+        panel.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+
+        Question question = questions.get(questionCount);
+        Label questionContent = new Label(question.getQuestion());
+        panel.addComponent(questionContent);
+
+        RadioBoxList<String> radioBoxList = new RadioBoxList<String>(new TerminalSize(50, 10));
+
+        List<String> answers = question.getIncorrectAnswers();
+        answers.add(question.getCorrectAnswer());
+        Collections.shuffle(answers);
+        answers.forEach(radioBoxList::addItem);
+        panel.addComponent(radioBoxList);
+
+        Button submit = new Button("Submit");
+        submit.addListener(button -> {
+            processAnswer(radioBoxList.getCheckedItem());
+        });
+        panel.addComponent(submit);
+
+        window.setHints(Arrays.asList(Window.Hint.FULL_SCREEN));
+        window.setComponent(panel);
+    }
+
+    private void processAnswer(String checkedItem) {
+
+        if (questions.get(questionCount).getCorrectAnswer().equals(checkedItem)) {
+            new MessageDialogBuilder()
+                    .setTitle("Success")
+                    .setText("Correct answer! Continue to next question :)")
+                    .addButton(MessageDialogButton.OK)
+                    .build()
+                    .showDialog(textGUI);
+            questionCount++;
+            if (questionCount < 2)
+                playGame();
+            else {
+                showWinnerDialog();
+                gameManager.saveAttempt(user, prizes.get(questionCount));
+            }
+
+
+        } else {
+            new MessageDialogBuilder()
+                    .setTitle("Wrong")
+                    .setText("Wrong answer. You lose :(")
+                    .addButton(MessageDialogButton.OK)
+                    .build()
+                    .showDialog(textGUI);
+        }
+    }
+
+    private void showWinnerDialog() {
+        Panel panel = new Panel();
+        Integer prize = prizes.get(questionCount);
+        Label prizeLabel = new Label("You won: " + prize + " PLN!");
+        panel.addComponent(prizeLabel);
+        window.setComponent(panel);
+    }
+
+
+    private void showStatistics() {
+
+    }
+
+    public static void main(String[] args) {
         App app = new App();
         app.start();
-        return;
     }
 }
