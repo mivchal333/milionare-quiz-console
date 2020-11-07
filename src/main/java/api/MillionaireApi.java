@@ -150,4 +150,30 @@ public class MillionaireApi {
         if (con.getResponseCode() != HttpURLConnection.HTTP_OK)
             throw new IOException("Stats save error");
     }
+
+    public List<AttemptEntry> fetchAttemptEntries(String username) throws IOException {
+
+        URL url = new URL(BASE_API_URL + "/stats?username=" + username);
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setRequestMethod("GET");
+        con.setRequestProperty("Content-Type", "application/json");
+        con.setRequestProperty("Accept", "application/json");
+        con.setDoOutput(true);
+
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(con.getInputStream()));
+        String inputLine;
+        StringBuffer content = new StringBuffer();
+        while ((inputLine = in.readLine()) != null) {
+            content.append(inputLine);
+        }
+        in.close();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        List<AttemptEntry> attemptEntries = objectMapper.readValue(content.toString(), new TypeReference<List<AttemptEntry>>() {
+        });
+
+        return attemptEntries;
+    }
 }

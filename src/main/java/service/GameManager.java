@@ -7,6 +7,7 @@ import model.Question;
 import model.User;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -26,6 +27,17 @@ public class GameManager {
             api.saveAttempt(attemptEntry);
         } catch (IOException e) {
             log.error("Unable to save user attempt stats", e);
+        }
+    }
+
+    public List<AttemptEntry> getUserStats(String username) {
+        MillionaireApi api = MillionaireApi.getApi();
+
+        try {
+            return api.fetchAttemptEntries(username);
+        } catch (IOException e) {
+            log.error("Unable to fet user attempts", e);
+            return Collections.emptyList();
         }
     }
 }

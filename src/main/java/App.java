@@ -3,8 +3,10 @@ import com.googlecode.lanterna.TextColor;
 import com.googlecode.lanterna.gui2.*;
 import com.googlecode.lanterna.gui2.dialogs.MessageDialogBuilder;
 import com.googlecode.lanterna.gui2.dialogs.MessageDialogButton;
+import com.googlecode.lanterna.gui2.table.Table;
 import com.googlecode.lanterna.screen.Screen;
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
+import model.AttemptEntry;
 import model.Question;
 import model.User;
 import service.GameManager;
@@ -218,6 +220,7 @@ public class App {
                 gameManager.saveAttempt(user, prizesService.getObtainedPrize(questionCount));
             }
         } else {
+            gameManager.saveAttempt(user, prizesService.getObtainedPrize(questionCount));
             new MessageDialogBuilder()
                     .setTitle("Wrong")
                     .setText("Wrong answer. End game :(. You won: " + prizesService.getObtainedPrize(questionCount))
@@ -251,8 +254,23 @@ public class App {
 
 
     private void showStatistics() {
+        List<AttemptEntry> userStats = gameManager.getUserStats(user.getUsername());
 
+        Panel panel = new Panel();
+        Table<String> table = new Table<>("Nick", "Prize", "Date");
 
+        userStats.stream()
+                .forEach(attemptEntry -> {
+                    table.getTableModel().addRow(user.getNick(), attemptEntry.getPrize().toString(), attemptEntry.getDate().toString());
+                });
+        panel.addComponent(table);
+
+        Button okButton = new Button("OK");
+        okButton.addListener(button -> {
+            showMainMenu();
+        });
+        panel.addComponent(okButton);
+        window.setComponent(panel);
     }
 
     public static void main(String[] args) {
