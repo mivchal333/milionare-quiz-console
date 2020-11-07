@@ -9,6 +9,7 @@ import model.Question;
 import model.User;
 import service.GameManager;
 import service.LoginService;
+import service.PrizesService;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -20,7 +21,7 @@ public class App {
     private Window window;
     private WindowBasedTextGUI textGUI;
     private Screen screen;
-    private final List<Integer> prizes = Collections.unmodifiableList(Arrays.asList(500, 1_000, 2_000, 5_000, 10_000, 20_000, 40_000, 75_000, 125_000, 250_000, 500_000, 1_0000_000));
+    private final PrizesService prizesService = new PrizesService();
     private final GameManager gameManager = new GameManager();
     private List<Question> questions;
     private int questionCount = 0;
@@ -202,43 +203,55 @@ public class App {
     }
 
     private void processAnswer(String checkedItem) {
-
         if (questions.get(questionCount).getCorrectAnswer().equals(checkedItem)) {
-            new MessageDialogBuilder()
-                    .setTitle("Success")
-                    .setText("Correct answer! Continue to next question :)")
-                    .addButton(MessageDialogButton.OK)
-                    .build()
-                    .showDialog(textGUI);
             questionCount++;
-            if (questionCount < 2)
+            if (questionCount < 2) {
+                new MessageDialogBuilder()
+                        .setTitle("Success")
+                        .setText("Correct answer! Continue to next question :)")
+                        .addButton(MessageDialogButton.OK)
+                        .build()
+                        .showDialog(textGUI);
                 playGame();
-            else {
+            } else {
                 showWinnerDialog();
-                gameManager.saveAttempt(user, prizes.get(questionCount));
+                gameManager.saveAttempt(user, prizesService.getObtainedPrize(questionCount));
             }
-
-
         } else {
             new MessageDialogBuilder()
                     .setTitle("Wrong")
-                    .setText("Wrong answer. You lose :(")
+                    .setText("Wrong answer. End game :(. You won: " + prizesService.getObtainedPrize(questionCount))
                     .addButton(MessageDialogButton.OK)
                     .build()
                     .showDialog(textGUI);
+            resetGame();
         }
     }
 
     private void showWinnerDialog() {
         Panel panel = new Panel();
-        Integer prize = prizes.get(questionCount);
+        int prize = prizesService.getPrize(questionCount).getValue();
         Label prizeLabel = new Label("You won: " + prize + " PLN!");
         panel.addComponent(prizeLabel);
+
+        Button okButton = new Button("OK");
+        okButton.addListener(button -> {
+            showMainMenu();
+        });
+        panel.addComponent(new EmptySpace(new TerminalSize(0, 2)));
+        panel.addComponent(okButton);
+
         window.setComponent(panel);
+    }
+
+    private void resetGame() {
+        showMainMenu();
+        questionCount = 0;
     }
 
 
     private void showStatistics() {
+
 
     }
 
