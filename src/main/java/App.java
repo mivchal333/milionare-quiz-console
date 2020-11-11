@@ -26,7 +26,7 @@ public class App {
     private final PrizesService prizesService = new PrizesService();
     private final GameManager gameManager = new GameManager();
     private List<Question> questions;
-    private int questionCount = 0;
+    private int questionCount;
     private final LoginService loginService = new LoginService();
     private User user;
 
@@ -206,8 +206,8 @@ public class App {
 
     private void processAnswer(String checkedItem) {
         if (questions.get(questionCount).getCorrectAnswer().equals(checkedItem)) {
-            questionCount++;
-            if (questionCount < 2) {
+            if (questionCount < questions.size() - 1) {
+                questionCount++;
                 new MessageDialogBuilder()
                         .setTitle("Success")
                         .setText("Correct answer! Continue to next question :)")
@@ -239,6 +239,7 @@ public class App {
 
         Button okButton = new Button("OK");
         okButton.addListener(button -> {
+            resetGame();
             showMainMenu();
         });
         panel.addComponent(new EmptySpace(new TerminalSize(0, 2)));

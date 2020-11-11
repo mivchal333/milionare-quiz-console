@@ -32,6 +32,35 @@ public class MillionaireApi {
         return api;
     }
 
+    public Optional<User> sendLoginRequest(User user) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String payload = objectMapper.writeValueAsString(user);
+
+        HttpURLConnection con = getHttpURLConnection("/login", RequestType.POST);
+
+
+        try (OutputStream os = con.getOutputStream()) {
+            byte[] input = payload.getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
+        }
+
+        StringBuilder response;
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
+            response = new StringBuilder();
+            String responseLine;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+        }
+        try {
+            User user1 = objectMapper.readValue(response.toString(), User.class);
+            return Optional.ofNullable(user1);
+        } catch (JsonProcessingException e) {
+            return Optional.empty();
+        }
+    }
+
     private int sendPostRequest(String path, String jsonPayload) throws IOException {
         URL url = new URL(BASE_API_URL + path);
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
@@ -48,73 +77,25 @@ public class MillionaireApi {
 
     }
 
-    private List<Question> sendGetRequest(String path) throws IOException {
-        URL url = new URL(BASE_API_URL + path);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("GET");
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setRequestProperty("Accept", "application/json");
-        con.setDoOutput(true);
-
-        BufferedReader in = new BufferedReader(
-                new InputStreamReader(con.getInputStream()));
-        String inputLine;
-        StringBuffer content = new StringBuffer();
-        while ((inputLine = in.readLine()) != null) {
-            content.append(inputLine);
-        }
-        in.close();
-
-        ObjectMapper objectMapper = new ObjectMapper();
-
-        List<Question> questions = objectMapper.readValue(content.toString(), new TypeReference<List<Question>>() {
-        });
-        return questions;
-    }
-
-    public Optional<User> sendLoginRequest(User user) throws IOException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        String payload = objectMapper.writeValueAsString(user);
-
-        URL url = new URL(BASE_API_URL + "/login");
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("POST");
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setRequestProperty("Accept", "application/json");
-        con.setDoOutput(true);
-
-
-        try (OutputStream os = con.getOutputStream()) {
-            byte[] input = payload.getBytes(StandardCharsets.UTF_8);
-            os.write(input, 0, input.length);
-        }
-
-        int code = con.getResponseCode();
-        StringBuilder response;
-
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream(), StandardCharsets.UTF_8))) {
-            response = new StringBuilder();
-            String responseLine = null;
-            while ((responseLine = br.readLine()) != null) {
-                response.append(responseLine.trim());
-            }
-        }
-        try {
-            User user1 = objectMapper.readValue(response.toString(), User.class);
-            return Optional.ofNullable(user1);
-        } catch (JsonProcessingException e) {
-            return Optional.empty();
-        }
-    }
-
-    public int sendRegisterRequest(User user) throws IOException {
-        return sendPostRequest("/register", user.toJson());
-    }
-
     public List<Question> fetchQuestions() {
-        List<Question> questions = null;
+        List<Question> questions;
         try {
-            questions = sendGetRequest("/question");
+            HttpURLConnection con = getHttpURLConnection("/question", RequestType.GET);
+
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(con.getInputStream()));
+            String inputLine;
+            StringBuffer content = new StringBuffer();
+            while ((inputLine = in.readLine()) != null) {
+                content.append(inputLine);
+            }
+            in.close();
+
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            questions = objectMapper.readValue(content.toString(), new TypeReference<List<Question>>() {
+            });
+
         } catch (IOException e) {
             e.printStackTrace();
             return Collections.emptyList();
@@ -123,16 +104,15 @@ public class MillionaireApi {
 
     }
 
+    public int sendRegisterRequest(User user) throws IOException {
+        return sendPostRequest("/register", user.toJson());
+    }
+
     public void saveAttempt(AttemptEntry entry) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
         String payload = objectMapper.writeValueAsString(entry);
 
-        URL url = new URL(BASE_API_URL + "/stats");
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("POST");
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setRequestProperty("Accept", "application/json");
-        con.setDoOutput(true);
+        HttpURLConnection con = getHttpURLConnection("/stats", RequestType.POST);
 
         try (OutputStream os = con.getOutputStream()) {
             byte[] input = payload.getBytes(StandardCharsets.UTF_8);
@@ -142,7 +122,7 @@ public class MillionaireApi {
         BufferedReader in = new BufferedReader(
                 new InputStreamReader(con.getInputStream()));
         String inputLine;
-        StringBuffer content = new StringBuffer();
+        StringBuilder content = new StringBuilder();
         while ((inputLine = in.readLine()) != null) {
             content.append(inputLine);
         }
@@ -153,12 +133,7 @@ public class MillionaireApi {
 
     public List<AttemptEntry> fetchAttemptEntries(String username) throws IOException {
 
-        URL url = new URL(BASE_API_URL + "/stats?username=" + username);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestMethod("GET");
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setRequestProperty("Accept", "application/json");
-        con.setDoOutput(true);
+        HttpURLConnection con = getHttpURLConnection("/stats?username=" + username, RequestType.GET);
 
         BufferedReader in = new BufferedReader(
                 new InputStreamReader(con.getInputStream()));
@@ -171,9 +146,19 @@ public class MillionaireApi {
 
         ObjectMapper objectMapper = new ObjectMapper();
 
-        List<AttemptEntry> attemptEntries = objectMapper.readValue(content.toString(), new TypeReference<List<AttemptEntry>>() {
+        return objectMapper.readValue(content.toString(), new TypeReference<List<AttemptEntry>>() {
         });
-
-        return attemptEntries;
     }
+
+    private HttpURLConnection getHttpURLConnection(String path, RequestType requestType) throws IOException {
+        URL url = new URL(BASE_API_URL + path);
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        con.setRequestMethod(requestType.toString());
+        con.setRequestProperty("Content-Type", "application/json");
+        con.setRequestProperty("Accept", "application/json");
+        con.setDoOutput(true);
+        return con;
+    }
+
+    enum RequestType {GET, POST}
 }

@@ -12,6 +12,7 @@ public class PrizesService {
 
     public PrizesService() {
         List<Prize> prizesModel = new ArrayList<>();
+        prizesModel.add(new Prize(0, false));
         prizesModel.add(new Prize(1_000, true));
         prizesModel.add(new Prize(2_000, false));
         prizesModel.add(new Prize(5_000, false));
@@ -27,7 +28,7 @@ public class PrizesService {
     }
 
     public int getObtainedPrize(int questionIndex) {
-        List<Prize> prizesInRange = prizesModel.subList(0, questionIndex);
+        List<Prize> prizesInRange = prizesModel.subList(0, questionIndex + 1);
         prizesInRange.sort(Comparator.comparingInt(Prize::getValue).reversed());
 
         Optional<Prize> prize = prizesInRange.stream()
@@ -38,7 +39,7 @@ public class PrizesService {
 
     }
 
-    public Prize getPrize(int index) {
-        return prizesModel.get(index);
+    public Prize getPrize(int questionIndex) {
+        return prizesModel.get(questionIndex);
     }
 }
