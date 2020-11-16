@@ -14,7 +14,6 @@ import service.LoginService;
 import service.PrizesService;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -22,13 +21,13 @@ import java.util.Optional;
 public class App {
     private Window window;
     private WindowBasedTextGUI textGUI;
-    private Screen screen;
     private final PrizesService prizesService = new PrizesService();
     private final GameManager gameManager = new GameManager();
     private List<Question> questions;
-    private int questionCount;
+    Screen screen;
     private final LoginService loginService = new LoginService();
     private User user;
+    private int questionCount = 11;
 
     void welcomeDialog() {
         new MessageDialogBuilder()
@@ -50,7 +49,7 @@ public class App {
         window = new BasicWindow("Millionaire Quiz");
     }
 
-    void authView() {
+    void showAuthView() {
 
         Panel mainPanel = new Panel();
         mainPanel.setLayoutManager(new LinearLayout(Direction.HORIZONTAL));
@@ -80,6 +79,9 @@ public class App {
         rightPanel.addComponent(new EmptySpace(new TerminalSize(0, 1)));
         new Button("Register", handleRegisterAttempt(rightPanel, usernameRegister, passwordRegister, nickRegister, registerResult)).addTo(rightPanel);
 
+        leftPanel.addComponent(new EmptySpace(new TerminalSize(0, 1)));
+        new Button("CLOSE", this::handleClose).addTo(leftPanel);
+
 
         window.setComponent(mainPanel.withBorder(Borders.singleLine("Please login or register")));
 
@@ -92,7 +94,13 @@ public class App {
             String nick = nickRegister.getText();
             boolean result = loginService.attemptRegister(username, password, nick);
             if (result) {
-                textGUI.removeWindow(window);
+                new MessageDialogBuilder()
+                        .setTitle("Successful")
+                        .setText("Now you can sign in :)")
+                        .addButton(MessageDialogButton.Continue)
+                        .build()
+                        .showDialog(textGUI);
+                showAuthView();
             } else {
                 registerResult.setText("Try again!");
                 registerResult.setForegroundColor(TextColor.ANSI.RED);
@@ -119,54 +127,48 @@ public class App {
     }
 
     public void start() {
-        Screen screen = null;
-
         try {
             setUpWindow();
 
             welcomeDialog();
 
-            authView();
+            showAuthView();
 
             textGUI.addWindowAndWait(window);
+
+
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            if (screen != null) {
-                try {
-                    screen.stopScreen();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 
     private void showMainMenu() {
-        window.setHints(Arrays.asList(Window.Hint.CENTERED));
+        window.setHints(Collections.singletonList(Window.Hint.CENTERED));
 
         Panel panel = new Panel();
         panel.setLayoutManager(new LinearLayout(Direction.HORIZONTAL));
 
         Button playButton = new Button("PLAY");
-        playButton.addListener(button -> {
-            playGame();
-        });
+        playButton.addListener(button -> playGame());
         panel.addComponent(playButton);
 
         Button statisticsButton = new Button("STATISTICS");
-        statisticsButton.addListener(button -> {
-            showStatistics();
-        });
+        statisticsButton.addListener(button -> showStatistics());
         panel.addComponent(statisticsButton);
 
         Button exitButton = new Button("CLOSE");
-        exitButton.addListener(button -> {
-            textGUI.removeWindow(window);
-        });
+        exitButton.addListener(button -> handleClose());
         panel.addComponent(exitButton);
 
         window.setComponent(panel);
+    }
+
+    private void handleClose() {
+        try {
+            screen.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void playGame() {
@@ -186,7 +188,7 @@ public class App {
         Label questionContent = new Label(question.getQuestion());
         panel.addComponent(questionContent);
 
-        RadioBoxList<String> radioBoxList = new RadioBoxList<String>(new TerminalSize(50, 10));
+        RadioBoxList<String> radioBoxList = new RadioBoxList<>(new TerminalSize(50, 10));
 
         List<String> answers = question.getIncorrectAnswers();
         answers.add(question.getCorrectAnswer());
@@ -195,12 +197,10 @@ public class App {
         panel.addComponent(radioBoxList);
 
         Button submit = new Button("Submit");
-        submit.addListener(button -> {
-            processAnswer(radioBoxList.getCheckedItem());
-        });
+        submit.addListener(button -> processAnswer(radioBoxList.getCheckedItem()));
         panel.addComponent(submit);
 
-        window.setHints(Arrays.asList(Window.Hint.FULL_SCREEN));
+        window.setHints(Collections.singletonList(Window.Hint.FULL_SCREEN));
         window.setComponent(panel);
     }
 
@@ -260,16 +260,12 @@ public class App {
         Panel panel = new Panel();
         Table<String> table = new Table<>("Nick", "Prize", "Date");
 
-        userStats.stream()
-                .forEach(attemptEntry -> {
-                    table.getTableModel().addRow(user.getNick(), attemptEntry.getPrize().toString(), attemptEntry.getDate().toString());
-                });
+        userStats
+                .forEach(attemptEntry -> table.getTableModel().addRow(user.getNick(), attemptEntry.getPrize().toString(), attemptEntry.getDate().toString()));
         panel.addComponent(table);
 
         Button okButton = new Button("OK");
-        okButton.addListener(button -> {
-            showMainMenu();
-        });
+        okButton.addListener(button -> showMainMenu());
         panel.addComponent(okButton);
         window.setComponent(panel);
     }
