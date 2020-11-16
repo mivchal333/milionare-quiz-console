@@ -23,7 +23,7 @@ public class PrizesService {
         prizesModel.add(new Prize(125_000, false));
         prizesModel.add(new Prize(250_000, false));
         prizesModel.add(new Prize(500_000, false));
-        prizesModel.add(new Prize(1_0000_000, true));
+        prizesModel.add(new Prize(1_000_000, true));
         this.prizesModel = prizesModel;
     }
 
