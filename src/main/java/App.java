@@ -1,3 +1,4 @@
+import api.MillionaireApi;
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.TextColor;
 import com.googlecode.lanterna.gui2.*;
@@ -9,6 +10,7 @@ import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
 import model.AttemptEntry;
 import model.Question;
 import model.User;
+import service.ConfigurationService;
 import service.GameManager;
 import service.LoginService;
 import service.PrizesService;
@@ -23,11 +25,12 @@ public class App {
     private WindowBasedTextGUI textGUI;
     private final PrizesService prizesService = new PrizesService();
     private final GameManager gameManager = new GameManager();
+    private final ConfigurationService configurationService = new ConfigurationService();
     private List<Question> questions;
     Screen screen;
     private final LoginService loginService = new LoginService();
     private User user;
-    private int questionCount = 11;
+    private int questionCount = 0;
 
     void welcomeDialog() {
         new MessageDialogBuilder()
@@ -126,7 +129,14 @@ public class App {
         };
     }
 
-    public void start() {
+    public static void main(String[] args) throws IOException {
+        App app = new App();
+        app.start();
+    }
+
+    public void start() throws IOException {
+        String port = configurationService.readPort();
+        MillionaireApi.setApiPort(port);
         try {
             setUpWindow();
 
@@ -135,8 +145,6 @@ public class App {
             showAuthView();
 
             textGUI.addWindowAndWait(window);
-
-
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -156,9 +164,40 @@ public class App {
         statisticsButton.addListener(button -> showStatistics());
         panel.addComponent(statisticsButton);
 
+        Button addQuestion = new Button("ADD QUESTION");
+        addQuestion.addListener(button -> showAddQuestionForm());
+        panel.addComponent(addQuestion);
+
         Button exitButton = new Button("CLOSE");
         exitButton.addListener(button -> handleClose());
         panel.addComponent(exitButton);
+
+        window.setComponent(panel);
+    }
+
+    private void showAddQuestionForm() {
+
+        Panel panel = new Panel();
+
+        panel.addComponent(new Label("Question"));
+        TextBox question = new TextBox().addTo(panel);
+
+        panel.addComponent(new Label("Correct Answer"));
+        TextBox correctAnswer = new TextBox().addTo(panel);
+
+        panel.addComponent(new Label("Incorrect Answer 1"));
+        TextBox incorrectAnswer1 = new TextBox().addTo(panel);
+
+        panel.addComponent(new Label("Incorrect Answer 2"));
+        TextBox incorrectAnswer2 = new TextBox().addTo(panel);
+
+        panel.addComponent(new Label("Incorrect Answer 3"));
+        TextBox incorrectAnswer3 = new TextBox().addTo(panel);
+
+
+        new Button("SUBMIT", () -> this.handlePostNewFormAction(question.getText(), correctAnswer.getText(), incorrectAnswer1.getText(), incorrectAnswer2.getText(), incorrectAnswer3.getText())).addTo(panel);
+
+        new Button("CLOSE", this::showMainMenu).addTo(panel);
 
         window.setComponent(panel);
     }
@@ -270,8 +309,14 @@ public class App {
         window.setComponent(panel);
     }
 
-    public static void main(String[] args) {
-        App app = new App();
-        app.start();
+    void handlePostNewFormAction(String questionContent, String currentAnswer, String incorrectAnswer1, String incorrectAnswer2, String incorrectAnswer3) {
+        gameManager.postNewQuestion(questionContent, currentAnswer, incorrectAnswer1, incorrectAnswer2, incorrectAnswer3);
+        new MessageDialogBuilder()
+                .setTitle("Success")
+                .setText("New Question Saved!")
+                .addButton(MessageDialogButton.OK)
+                .build()
+                .showDialog(textGUI);
+        showMainMenu();
     }
 }

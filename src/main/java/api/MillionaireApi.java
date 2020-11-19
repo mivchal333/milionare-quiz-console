@@ -20,7 +20,7 @@ import java.util.Optional;
 
 public class MillionaireApi {
     private static MillionaireApi api;
-    private final String BASE_API_URL = "http://localhost:8080";
+    private static String BASE_API_URL;
 
     private MillionaireApi() {
     }
@@ -37,7 +37,6 @@ public class MillionaireApi {
         String payload = objectMapper.writeValueAsString(user);
 
         HttpURLConnection con = getHttpURLConnection("/login", RequestType.POST);
-
 
         try (OutputStream os = con.getOutputStream()) {
             byte[] input = payload.getBytes(StandardCharsets.UTF_8);
@@ -131,6 +130,10 @@ public class MillionaireApi {
             throw new IOException("Stats save error");
     }
 
+    public static void setApiPort(String port) {
+        BASE_API_URL = "http://localhost:" + port;
+    }
+
     public List<AttemptEntry> fetchAttemptEntries(String username) throws IOException {
 
         HttpURLConnection con = getHttpURLConnection("/stats?username=" + username, RequestType.GET);
@@ -161,4 +164,27 @@ public class MillionaireApi {
     }
 
     enum RequestType {GET, POST}
+
+    public void postQuestion(Question question) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String payload = objectMapper.writeValueAsString(question);
+
+        HttpURLConnection con = getHttpURLConnection("/question", RequestType.POST);
+
+        try (OutputStream os = con.getOutputStream()) {
+            byte[] input = payload.getBytes(StandardCharsets.UTF_8);
+            os.write(input, 0, input.length);
+        }
+
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(con.getInputStream()));
+        String inputLine;
+        StringBuilder content = new StringBuilder();
+        while ((inputLine = in.readLine()) != null) {
+            content.append(inputLine);
+        }
+        in.close();
+        if (con.getResponseCode() != HttpURLConnection.HTTP_OK)
+            throw new IOException("Stats save error");
+    }
 }
